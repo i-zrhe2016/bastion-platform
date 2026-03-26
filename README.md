@@ -25,10 +25,26 @@
 
 ## 运行方式
 
-### 1) 构建 server
+### 1) Server（推荐：Docker Compose，无本机依赖）
+
+只需要本机安装 Docker + Docker Compose，不需要安装 Java/Maven。
 
 ```bash
-mvn -pl bastion-server -am clean package
+docker compose up --build -d
+```
+
+默认端口：`8080`
+
+检查服务：
+
+```bash
+curl http://127.0.0.1:8080/actuator/health
+```
+
+停止服务：
+
+```bash
+docker compose down
 ```
 
 ### 2) 构建 agent（Rust）
@@ -38,21 +54,7 @@ cd bastion-agent
 cargo build --release
 ```
 
-### 3) 使用 Docker Compose 启动 server
-
-```bash
-docker compose up --build
-```
-
-默认端口：`8080`
-
-停止服务：
-
-```bash
-docker compose down
-```
-
-### 4) 启动 server（本地 Maven）
+### 3) 启动 server（本地 Maven，可选）
 
 ```bash
 cd bastion-server
@@ -61,7 +63,7 @@ mvn spring-boot:run
 
 默认端口：`8080`
 
-### 5) 启动 agent（本地演示）
+### 4) 启动 agent（本地演示）
 
 ```bash
 cd bastion-agent
@@ -70,13 +72,13 @@ cd bastion-agent
 
 > 默认 `application.yml` 已配置 `bastion.server.base-url: http://localhost:8080`。
 
-### 6) 查看服务发现
+### 5) 查看服务发现
 
 ```bash
 curl http://127.0.0.1:8080/api/v1/agents
 ```
 
-### 7) 一键连接（脚本，交互式）
+### 6) 一键连接（脚本，交互式）
 
 ```bash
 bash bastion-server/scripts/one-click-connect.sh
