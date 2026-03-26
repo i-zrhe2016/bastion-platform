@@ -1,0 +1,17 @@
+server:
+  port: 8080
+
+bastion:
+  registry:
+    ttl-seconds: 45
+    cleanup-interval-ms: 10000
+  connection:
+    token-ttl-seconds: 120
+    cleanup-interval-ms: 30000
+    default-mode: mosh
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

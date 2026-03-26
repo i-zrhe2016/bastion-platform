@@ -1,0 +1,9 @@
+services:
+  bastion-server:
+    container_name: bastion-server
+    build:
+      context: .
+      dockerfile: bastion-server/Dockerfile
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

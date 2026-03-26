@@ -1,0 +1,14 @@
+spring:
+  main:
+    web-application-type: none
+
+bastion:
+  server:
+    base-url: http://localhost:8080
+  agent:
+    ssh-port: 22
+    id-file: ~/.bastion-agent/agent-id
+    heartbeat-interval-ms: 10000
+    tags:
+      role: jump
+      zone: default
