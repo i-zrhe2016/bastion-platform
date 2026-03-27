@@ -10,6 +10,7 @@
 ## 核心能力
 
 - Agent 自动注册：`POST /api/v1/agents/register`
+- 注册响应下发 server SSH 公钥（可选，agent 自动写入 `authorized_keys`）
 - 心跳续约：`POST /api/v1/agents/heartbeat`
 - 服务发现：`GET /api/v1/agents`
 - 一键连接：`POST /api/v1/connections/one-click`
@@ -30,6 +31,13 @@
 只需要本机安装 Docker + Docker Compose，不需要安装 Java/Maven。
 
 ```bash
+docker compose up --build -d
+```
+
+如需让 server 可直接 SSH 到 agent，请在启动前设置 server 公钥（建议）：
+
+```bash
+export BASTION_SERVER_PUBLIC_KEY="$(cat ~/.ssh/id_ed25519.pub)"
 docker compose up --build -d
 ```
 
@@ -71,6 +79,9 @@ cd bastion-agent
 ```
 
 > 默认 `application.yml` 已配置 `bastion.server.base-url: http://localhost:8080`。
+
+> 当 server 配置了 `BASTION_SERVER_PUBLIC_KEY` 时，agent 注册成功后会自动把该公钥写入
+> `~/.ssh/authorized_keys`（可通过 `bastion.agent.ssh-authorized-keys-file` 覆盖路径）。
 
 ### 5) 查看服务发现
 
@@ -155,6 +166,18 @@ curl -X POST http://127.0.0.1:8080/api/v1/connections/one-click \
 - `token`
 - `expiresAt`
 - `connectCommand`（可直接执行）
+
+## 密钥下发配置
+
+`bastion-server` 可通过配置项把 SSH 公钥下发给 agent 注册响应：
+
+```yaml
+bastion:
+  connection:
+    server-public-key: ${BASTION_SERVER_PUBLIC_KEY:}
+```
+
+建议把 server 的公钥内容放入环境变量 `BASTION_SERVER_PUBLIC_KEY`，私钥保留在 server 本机。
 
 ## 生产建议（下一步）
 

@@ -1,7 +1,9 @@
 package com.example.bastion.server.controller;
 
+import com.example.bastion.server.config.ConnectionProperties;
 import com.example.bastion.server.dto.AgentHeartbeatRequest;
 import com.example.bastion.server.dto.AgentInfoResponse;
+import com.example.bastion.server.dto.AgentRegistrationResponse;
 import com.example.bastion.server.dto.AgentRegistrationRequest;
 import com.example.bastion.server.model.AgentNode;
 import com.example.bastion.server.service.AgentRegistryService;
@@ -23,15 +25,17 @@ import java.util.List;
 public class AgentController {
 
     private final AgentRegistryService registryService;
+    private final ConnectionProperties connectionProperties;
 
-    public AgentController(AgentRegistryService registryService) {
+    public AgentController(AgentRegistryService registryService, ConnectionProperties connectionProperties) {
         this.registryService = registryService;
+        this.connectionProperties = connectionProperties;
     }
 
     @PostMapping("/register")
-    public AgentInfoResponse register(@Valid @RequestBody AgentRegistrationRequest request) {
+    public AgentRegistrationResponse register(@Valid @RequestBody AgentRegistrationRequest request) {
         AgentNode node = registryService.register(request);
-        return AgentInfoResponse.from(node, true);
+        return AgentRegistrationResponse.from(node, true, normalizedServerPublicKey());
     }
 
     @PostMapping("/heartbeat")
@@ -55,5 +59,13 @@ public class AgentController {
         AgentNode node = registryService.findOnlineAgent(agentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "agent not found or offline"));
         return AgentInfoResponse.from(node, true);
+    }
+
+    private String normalizedServerPublicKey() {
+        if (connectionProperties.getServerPublicKey() == null) {
+            return null;
+        }
+        String value = connectionProperties.getServerPublicKey().trim();
+        return value.isEmpty() ? null : value;
     }
 }

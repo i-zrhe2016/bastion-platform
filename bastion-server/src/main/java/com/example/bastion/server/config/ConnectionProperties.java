@@ -7,6 +7,7 @@ public class ConnectionProperties {
 
     private long tokenTtlSeconds = 120;
     private String defaultMode = "mosh";
+    private String serverPublicKey;
 
     public long getTokenTtlSeconds() {
         return tokenTtlSeconds;
@@ -22,5 +23,13 @@ public class ConnectionProperties {
 
     public void setDefaultMode(String defaultMode) {
         this.defaultMode = defaultMode;
+    }
+
+    public String getServerPublicKey() {
+        return serverPublicKey;
+    }
+
+    public void setServerPublicKey(String serverPublicKey) {
+        this.serverPublicKey = serverPublicKey;
     }
 }

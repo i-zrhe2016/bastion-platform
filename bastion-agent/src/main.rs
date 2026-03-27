@@ -1,8 +1,10 @@
 use anyhow::{bail, Context, Result};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
 use std::fs;
+use std::io::ErrorKind;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -46,6 +48,8 @@ struct AgentConfig {
     ssh_port: u16,
     #[serde(default = "default_id_file")]
     id_file: String,
+    #[serde(default = "default_ssh_authorized_keys_file")]
+    ssh_authorized_keys_file: String,
     #[serde(default = "default_heartbeat_interval_ms")]
     heartbeat_interval_ms: u64,
     #[serde(default)]
@@ -57,6 +61,7 @@ impl Default for AgentConfig {
         Self {
             ssh_port: default_ssh_port(),
             id_file: default_id_file(),
+            ssh_authorized_keys_file: default_ssh_authorized_keys_file(),
             heartbeat_interval_ms: default_heartbeat_interval_ms(),
             tags: HashMap::new(),
         }
@@ -83,6 +88,13 @@ struct AgentRegistrationRequest<'a> {
 #[serde(rename_all = "camelCase")]
 struct AgentHeartbeatRequest<'a> {
     agent_id: &'a str,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentRegistrationResponse {
+    #[serde(default)]
+    server_public_key: Option<String>,
 }
 
 #[tokio::main]
@@ -141,7 +153,23 @@ async fn register_now(client: &RegistrationClient, agent: &AgentConfig, agent_id
     };
 
     match client.register(&request).await {
-        Ok(()) => {
+        Ok(server_public_key) => {
+            if let Some(public_key) = server_public_key {
+                let authorized_keys_path = resolve_path(&agent.ssh_authorized_keys_file);
+                match upsert_authorized_key(&authorized_keys_path, &public_key) {
+                    Ok(true) => info!(
+                        "installed server ssh public key into {}",
+                        authorized_keys_path.display()
+                    ),
+                    Ok(false) => debug!(
+                        "server ssh public key already exists in {}",
+                        authorized_keys_path.display()
+                    ),
+                    Err(err) => warn!(
+                        "agent registered but failed to persist server ssh public key: {err}"
+                    ),
+                }
+            }
             info!(
                 "agent registered: id={}, host={}, ip={}",
                 agent_id, host, ip
@@ -168,8 +196,11 @@ impl RegistrationClient {
         })
     }
 
-    async fn register(&self, request: &AgentRegistrationRequest<'_>) -> Result<()> {
-        self.post_json("/api/v1/agents/register", request).await
+    async fn register(&self, request: &AgentRegistrationRequest<'_>) -> Result<Option<String>> {
+        let response: AgentRegistrationResponse = self
+            .post_json_with_response("/api/v1/agents/register", request)
+            .await?;
+        Ok(normalize_optional_string(response.server_public_key))
     }
 
     async fn heartbeat(&self, agent_id: &str) -> Result<()> {
@@ -194,6 +225,32 @@ impl RegistrationClient {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
         bail!("request failed: status={status}, body={body}");
+    }
+
+    async fn post_json_with_response<T: Serialize + ?Sized, R: DeserializeOwned>(
+        &self,
+        path: &str,
+        payload: &T,
+    ) -> Result<R> {
+        let url = format!("{}{}", self.base_url, path);
+        let response = self
+            .client
+            .post(&url)
+            .json(payload)
+            .send()
+            .await
+            .with_context(|| format!("request failed: {url}"))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            bail!("request failed: status={status}, body={body}");
+        }
+
+        response
+            .json::<R>()
+            .await
+            .with_context(|| format!("failed to decode response body from {url}"))
     }
 }
 
@@ -259,12 +316,75 @@ fn get_or_create_agent_id(configured_path: &str) -> Result<String> {
 }
 
 fn resolve_id_path(configured_path: &str) -> PathBuf {
+    resolve_path(configured_path)
+}
+
+fn resolve_path(configured_path: &str) -> PathBuf {
     if let Some(rest) = configured_path.strip_prefix("~/") {
         if let Ok(home) = env::var("HOME") {
             return Path::new(&home).join(rest);
         }
     }
     PathBuf::from(configured_path)
+}
+
+fn upsert_authorized_key(path: &Path, key: &str) -> Result<bool> {
+    let key = key.trim();
+    if key.is_empty() {
+        return Ok(false);
+    }
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).with_context(|| {
+            format!(
+                "failed to create parent directory for authorized_keys: {}",
+                parent.display()
+            )
+        })?;
+    }
+
+    let existing = match fs::read_to_string(path) {
+        Ok(content) => content,
+        Err(err) if err.kind() == ErrorKind::NotFound => String::new(),
+        Err(err) => {
+            return Err(err)
+                .with_context(|| format!("failed to read authorized_keys file: {}", path.display()))
+        }
+    };
+
+    if existing.lines().any(|line| line.trim() == key) {
+        return Ok(false);
+    }
+
+    let mut updated = existing;
+    if !updated.is_empty() && !updated.ends_with('\n') {
+        updated.push('\n');
+    }
+    updated.push_str(key);
+    updated.push('\n');
+
+    fs::write(path, updated)
+        .with_context(|| format!("failed to write authorized_keys file: {}", path.display()))?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(path, fs::Permissions::from_mode(0o600))
+            .with_context(|| format!("failed to set permissions on {}", path.display()))?;
+    }
+
+    Ok(true)
+}
+
+fn normalize_optional_string(value: Option<String>) -> Option<String> {
+    value.and_then(|item| {
+        let normalized = item.trim();
+        if normalized.is_empty() {
+            None
+        } else {
+            Some(normalized.to_string())
+        }
+    })
 }
 
 fn hostname() -> String {
@@ -320,6 +440,10 @@ fn default_id_file() -> String {
     "~/.bastion-agent/agent-id".to_string()
 }
 
+fn default_ssh_authorized_keys_file() -> String {
+    "~/.ssh/authorized_keys".to_string()
+}
+
 fn default_heartbeat_interval_ms() -> u64 {
     10_000
 }
@@ -356,5 +480,23 @@ mod tests {
             let path = resolve_id_path("~/my-agent/id");
             assert_eq!(path, Path::new(&home).join("my-agent/id"));
         }
+    }
+
+    #[test]
+    fn upsert_authorized_key_creates_file_and_deduplicates() {
+        let temp_root = env::temp_dir().join(format!("bastion-agent-test-{}", Uuid::new_v4()));
+        let authorized_keys = temp_root.join("authorized_keys");
+        let key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMockServerKey bastion-server";
+
+        let inserted = upsert_authorized_key(&authorized_keys, key).unwrap();
+        assert!(inserted);
+
+        let inserted_again = upsert_authorized_key(&authorized_keys, key).unwrap();
+        assert!(!inserted_again);
+
+        let content = fs::read_to_string(&authorized_keys).unwrap();
+        assert_eq!(content, format!("{key}\n"));
+
+        let _ = fs::remove_dir_all(temp_root);
     }
 }

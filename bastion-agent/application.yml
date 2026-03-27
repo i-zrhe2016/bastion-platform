@@ -8,6 +8,7 @@ bastion:
   agent:
     ssh-port: 22
     id-file: ~/.bastion-agent/agent-id
+    ssh-authorized-keys-file: ~/.ssh/authorized_keys
     heartbeat-interval-ms: 10000
     tags:
       role: jump
