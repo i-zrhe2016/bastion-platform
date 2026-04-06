@@ -7,7 +7,6 @@ BINARY_SOURCE="./target/release/bastion-agent"
 DOWNLOAD_URL="https://github.com/i-zrhe2016/bastion-platform/releases/download/latest/bastion-agent-x86_64-linux"
 DOWNLOAD_SHA256=""
 SERVER_URL=""
-SERVER_PUBLIC_KEY=""
 SSH_PORT="22"
 HEARTBEAT_MS="10000"
 TAGS=()
@@ -24,7 +23,6 @@ Options:
                              (supports {arch} placeholder, e.g. .../bastion-agent-linux-{arch})
   --download-sha256 <hex>    Optional SHA-256 checksum for downloaded binary
   --server-url <url>         Bastion server URL (required)
-  --server-public-key <key>  SSH public key to write into authorized_keys (required)
   --install-dir <dir>        Install directory (default: ${INSTALL_DIR})
   --service-name <name>      Systemd service name (default: ${SERVICE_NAME})
   --ssh-port <port>          SSH port reported by agent (default: ${SSH_PORT})
@@ -129,7 +127,6 @@ main() {
       --download-url) DOWNLOAD_URL="$2"; shift 2 ;;
       --download-sha256) DOWNLOAD_SHA256="$2"; shift 2 ;;
       --server-url) SERVER_URL="$2"; shift 2 ;;
-      --server-public-key) SERVER_PUBLIC_KEY="$2"; shift 2 ;;
       --install-dir) INSTALL_DIR="$2"; shift 2 ;;
       --service-name) SERVICE_NAME="$2"; shift 2 ;;
       --ssh-port) SSH_PORT="$2"; shift 2 ;;
@@ -142,11 +139,6 @@ main() {
 
   if [[ -z "${SERVER_URL}" ]]; then
     echo "Error: --server-url is required. Example: --server-url http://<server-ip>:8080" >&2
-    exit 1
-  fi
-
-  if [[ -z "${SERVER_PUBLIC_KEY}" ]]; then
-    echo "Error: --server-public-key is required. Example: --server-public-key 'ssh-ed25519 AAAA...'" >&2
     exit 1
   fi
 
@@ -185,17 +177,8 @@ bastion:
 ${TAG_LINES:-      role: jump}
 YAML
 
-  # Write server public key into root's authorized_keys immediately
-  mkdir -p /root/.ssh
-  chmod 700 /root/.ssh
-  touch /root/.ssh/authorized_keys
-  chmod 600 /root/.ssh/authorized_keys
-  if ! grep -qF "${SERVER_PUBLIC_KEY}" /root/.ssh/authorized_keys 2>/dev/null; then
-    echo "${SERVER_PUBLIC_KEY}" >> /root/.ssh/authorized_keys
-    echo "Server public key added to /root/.ssh/authorized_keys"
-  else
-    echo "Server public key already present in /root/.ssh/authorized_keys"
-  fi
+  # Server public key is delivered via registration response and written
+  # to authorized_keys automatically by the agent at runtime.
 
   if [[ "${BASTION_AGENT_INSTALL_SKIP_SYSTEMD:-0}" == "1" ]]; then
     echo "Installed files successfully (systemd setup skipped)."

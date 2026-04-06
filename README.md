@@ -134,12 +134,11 @@ bash bastion-server/scripts/one-click-connect.sh --server-url http://<server-ip>
 curl -fsSL https://raw.githubusercontent.com/i-zrhe2016/bastion-platform/main/bastion-agent/scripts/install-agent.sh | \
   sudo bash -s -- \
     --server-url http://<server-ip>:8080 \
-    --server-public-key "$(cat ~/.ssh/id_ed25519.pub)" \
     --tag env=prod \
     --tag role=jump
 ```
 
-脚本会自动下载最新预编译二进制，无需安装 Rust。
+脚本会自动下载最新预编译二进制，无需安装 Rust。Agent 注册成功后，Server 自动将公钥下发并写入 `authorized_keys`。
 
 安装脚本会：
 
