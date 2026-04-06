@@ -60,15 +60,8 @@ docker compose down
 无需安装 Rust/Cargo，直接下载最新构建的静态链接二进制：
 
 ```bash
-curl -fsSL https://github.com/i-zrhe2016/bastion-platform/releases/latest/download/bastion-agent-x86_64-linux \
+curl -fsSL https://github.com/i-zrhe2016/bastion-platform/releases/download/latest/bastion-agent-x86_64-linux \
   -o bastion-agent && chmod +x bastion-agent
-```
-
-或使用 GitHub Actions 最新 artifact（需 `gh` CLI 已登录）：
-
-```bash
-gh run download --repo i-zrhe2016/bastion-platform --name bastion-agent-x86_64-linux
-chmod +x bastion-agent-x86_64-linux
 ```
 
 ### 2b) 从源码构建 agent（可选）
@@ -138,7 +131,7 @@ bash bastion-server/scripts/one-click-connect.sh --server-url http://<server-ip>
 下载最新预编译二进制，然后在目标跳板机执行：
 
 ```bash
-curl -fsSL https://github.com/i-zrhe2016/bastion-platform/releases/latest/download/bastion-agent-x86_64-linux \
+curl -fsSL https://github.com/i-zrhe2016/bastion-platform/releases/download/latest/bastion-agent-x86_64-linux \
   -o bastion-agent && chmod +x bastion-agent
 
 sudo bash bastion-agent/scripts/install-agent.sh \
