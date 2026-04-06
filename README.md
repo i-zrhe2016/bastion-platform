@@ -128,18 +128,17 @@ bash bastion-server/scripts/one-click-connect.sh --server-url http://<server-ip>
 
 ## Agent 一键安装（systemd）
 
-下载最新预编译二进制，然后在目标跳板机执行：
+在目标跳板机执行（替换 `<server-ip>`）：
 
 ```bash
-curl -fsSL https://github.com/i-zrhe2016/bastion-platform/releases/download/latest/bastion-agent-x86_64-linux \
-  -o bastion-agent && chmod +x bastion-agent
-
-sudo bash bastion-agent/scripts/install-agent.sh \
-  --bin ./bastion-agent \
-  --server-url http://<server-ip>:8080 \
-  --tag env=prod \
-  --tag role=jump
+curl -fsSL https://raw.githubusercontent.com/i-zrhe2016/bastion-platform/main/bastion-agent/scripts/install-agent.sh | \
+  sudo bash -s -- \
+    --server-url http://<server-ip>:8080 \
+    --tag env=prod \
+    --tag role=jump
 ```
+
+脚本会自动下载最新预编译二进制，无需安装 Rust。
 
 安装脚本会：
 

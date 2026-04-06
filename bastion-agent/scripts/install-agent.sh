@@ -4,9 +4,9 @@ set -euo pipefail
 SERVICE_NAME="bastion-agent"
 INSTALL_DIR="/opt/bastion-agent"
 BINARY_SOURCE="./target/release/bastion-agent"
-DOWNLOAD_URL=""
+DOWNLOAD_URL="https://github.com/i-zrhe2016/bastion-platform/releases/download/latest/bastion-agent-x86_64-linux"
 DOWNLOAD_SHA256=""
-SERVER_URL="http://82.156.46.158:8080"
+SERVER_URL=""
 SSH_PORT="22"
 HEARTBEAT_MS="10000"
 TAGS=()
@@ -136,6 +136,11 @@ main() {
       *) echo "Unknown option: $1"; usage; exit 1 ;;
     esac
   done
+
+  if [[ -z "${SERVER_URL}" ]]; then
+    echo "Error: --server-url is required. Example: --server-url http://<server-ip>:8080" >&2
+    exit 1
+  fi
 
   if [[ "$EUID" -ne 0 ]]; then
     echo "Please run as root (required for installation)."
