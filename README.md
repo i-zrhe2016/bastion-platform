@@ -128,12 +128,13 @@ bash bastion-server/scripts/one-click-connect.sh --server-url http://<server-ip>
 
 ## Agent 一键安装（systemd）
 
-在目标跳板机执行（替换 `<server-ip>`）：
+在目标跳板机执行（替换 `<server-ip>` 和公钥内容）：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/i-zrhe2016/bastion-platform/main/bastion-agent/scripts/install-agent.sh | \
   sudo bash -s -- \
     --server-url http://<server-ip>:8080 \
+    --server-public-key "$(cat ~/.ssh/id_ed25519.pub)" \
     --tag env=prod \
     --tag role=jump
 ```
