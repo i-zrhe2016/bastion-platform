@@ -9,7 +9,7 @@ bastion:
     token-ttl-seconds: 120
     cleanup-interval-ms: 30000
     default-mode: mosh
-    server-public-key: ${BASTION_SERVER_PUBLIC_KEY:}
+    server-public-key: ${BASTION_SERVER_PUBLIC_KEY}
 
 management:
   endpoints:
