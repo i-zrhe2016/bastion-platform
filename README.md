@@ -55,7 +55,23 @@ curl http://127.0.0.1:8080/actuator/health
 docker compose down
 ```
 
-### 2) 构建 agent（Rust）
+### 2) 安装 agent（推荐：直接下载预编译二进制）
+
+无需安装 Rust/Cargo，直接下载最新构建的静态链接二进制：
+
+```bash
+curl -fsSL https://github.com/i-zrhe2016/bastion-platform/releases/latest/download/bastion-agent-x86_64-linux \
+  -o bastion-agent && chmod +x bastion-agent
+```
+
+或使用 GitHub Actions 最新 artifact（需 `gh` CLI 已登录）：
+
+```bash
+gh run download --repo i-zrhe2016/bastion-platform --name bastion-agent-x86_64-linux
+chmod +x bastion-agent-x86_64-linux
+```
+
+### 2b) 从源码构建 agent（可选）
 
 ```bash
 cd bastion-agent
@@ -119,13 +135,14 @@ bash bastion-server/scripts/one-click-connect.sh --server-url http://<server-ip>
 
 ## Agent 一键安装（systemd）
 
-先构建 `bastion-agent`，然后在目标跳板机执行：
+下载最新预编译二进制，然后在目标跳板机执行：
 
 ```bash
-cd bastion-agent
-cargo build --release
-sudo bash scripts/install-agent.sh \
-  --bin target/release/bastion-agent \
+curl -fsSL https://github.com/i-zrhe2016/bastion-platform/releases/latest/download/bastion-agent-x86_64-linux \
+  -o bastion-agent && chmod +x bastion-agent
+
+sudo bash bastion-agent/scripts/install-agent.sh \
+  --bin ./bastion-agent \
   --server-url http://<server-ip>:8080 \
   --tag env=prod \
   --tag role=jump
