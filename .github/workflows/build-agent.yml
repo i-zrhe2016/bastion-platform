@@ -3,15 +3,10 @@ name: Build bastion-agent
 on:
   push:
     branches: [main]
-    paths:
-      - 'bastion-agent/**'
-      - '.github/workflows/build-agent.yml'
   pull_request:
     paths:
       - 'bastion-agent/**'
   workflow_dispatch:
-  release:
-    types: [created]
 
 jobs:
   build:
@@ -57,8 +52,11 @@ jobs:
           path: dist/bastion-agent-x86_64-linux
           retention-days: 30
 
-      - name: Upload to release
-        if: github.event_name == 'release'
+      - name: Release latest
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: latest
+          name: Latest Build
+          prerelease: true
           files: dist/bastion-agent-x86_64-linux
